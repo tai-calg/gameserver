@@ -1,11 +1,17 @@
+
 from enum import Enum
+from enum import IntEnum
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
+from sqlalchemy import BIGINT
 
 from . import model
 from .model import SafeUser
+from .model import LiveDifficulty
+
+
 
 app = FastAPI()
 
@@ -25,8 +31,21 @@ class UserCreateRequest(BaseModel):
     leader_card_id: int
 
 
-class UserCreateResponse(BaseModel):
+class UserCreateResponse(BaseModel): # ここでjson型にしている（BaseModelによって）
     user_token: str
+
+
+
+
+class RoomCreateRequest(BaseModel):
+    live_id: int
+    difficulty: LiveDifficulty
+class RoomCreateResponse(BaseModel): 
+    roomid: int
+    
+
+
+
 
 
 @app.post("/user/create", response_model=UserCreateResponse)
@@ -65,3 +84,12 @@ def update(req: UserCreateRequest, token: str = Depends(get_auth_token)):
     # print(req)
     model.update_user(token, req.user_name, req.leader_card_id)
     return {}
+
+# room/create
+@app.post("/room/create", response_model=RoomCreateResponse)
+def room_create(req: RoomCreateRequest):
+    model.create_room(req.live_id, int(req.difficulty))
+    room_id = model.get_last_insert_id()
+    print("ルームIDは",room_id)
+    
+    return RoomCreateResponse(roomid=room_id)

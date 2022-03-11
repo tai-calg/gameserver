@@ -16,7 +16,7 @@ def _create_users():
 
 
 _create_users()
-
+assert len(user_tokens) == 10
 
 def _auth_header(i=0):
     token = user_tokens[i]

@@ -11,6 +11,8 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.exc import NoResultFound
 
+
+
 from .db import engine
 
 
@@ -27,6 +29,24 @@ class SafeUser(BaseModel):
 
     class Config:
         orm_mode = True
+        
+class LiveDifficulty(IntEnum):
+    normal = 1
+    hard = 2
+class RoomInfo(BaseModel):
+    room_id: int
+    live_id: int
+    joined_user_count: int
+    max_user_count: int
+
+class RoomUser(BaseModel):
+    user_id: int
+    name:str 
+    leader_card_id: int
+    select_difficulty:LiveDifficulty
+    is_me: bool
+    is_host:bool
+    
 
 
 def create_user(name: str, leader_card_id: int) -> str:
@@ -48,7 +68,7 @@ def _get_user_by_token(conn, token: str) -> Optional[SafeUser]:
     # TODO:
     reqest = conn.execute(
         text("SELECT `id`, `name`, `leader_card_id` FROM user WHERE `token` =:token"),
-        dict(token="DkhoD33w2"),
+        dict(token=token),
     )
     try:
         res = reqest.one()
@@ -74,3 +94,22 @@ def update_user(_token: str, _name: str, _leader_card_id: int) -> None:
             dict(name=_name, leader_card_id=_leader_card_id, token=_token),
         )
         return None
+
+def create_room(liveid: int, select_defi: int):
+    """Create new room and returns its id"""
+    token = str(uuid.uuid4()) # 同じ設定値のルームが建てるようになるためにトークンを作る
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("INSERT INTO `room` (select_difficulty , live_id, token) VALUES (:select_difficulty, :live_id, :token)"),
+            dict(live_id=liveid, select_difficulty=select_defi, token=token),
+        )
+        #room_id = result.lastrowid
+        #print(room_id)
+        return
+
+def get_last_insert_id()-> int:
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("SELECT LAST_INSERT_ID()"),
+        )
+        return result.scalar()
