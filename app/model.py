@@ -1,7 +1,10 @@
+# flake8: noqa
+
 import json
 import uuid
 from enum import Enum, IntEnum
 from typing import Optional
+from unittest import result
 
 from fastapi import HTTPException
 from pydantic import BaseModel
@@ -42,8 +45,16 @@ def create_user(name: str, leader_card_id: int) -> str:
 
 
 def _get_user_by_token(conn, token: str) -> Optional[SafeUser]:
-    # TODO: 実装
-    pass
+    # TODO:
+    reqest = conn.execute(
+        text("SELECT `id`, `name`, `leader_card_id` FROM user WHERE `token` =:token"),
+        dict(token="DkhoD33w2"),
+    )
+    try:
+        res = reqest.one()
+    except NoResultFound:
+        return None
+    return SafeUser.from_orm(res)
 
 
 def get_user_by_token(token: str) -> Optional[SafeUser]:
@@ -51,8 +62,15 @@ def get_user_by_token(token: str) -> Optional[SafeUser]:
         return _get_user_by_token(conn, token)
 
 
-def update_user(token: str, name: str, leader_card_id: int) -> None:
+def update_user(_token: str, _name: str, _leader_card_id: int) -> None:
     # このコードを実装してもらう
     with engine.begin() as conn:
-        # TODO: 実装
-        pass
+        # user = _get_user_by_token(conn, token)
+        conn.execute(
+            text(
+                """ UPDATE user SET name = :name, 
+                     leader_card_id = :leader_card_id WHERE token = :token """
+            ),
+            dict(name=_name, leader_card_id=_leader_card_id, token=_token),
+        )
+        return None
