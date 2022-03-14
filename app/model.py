@@ -181,7 +181,8 @@ def create_user_info(userinfo: RoomUser, room_id: int)-> None:
 
 
 def join_room(room_id: int, select_difi:int):
-    userinfo = RoomUser(1,"akihiro",1,LiveDifficulty.normal,True,True) # TODO: ひとまず例を書いてる.　どこからRoomUserを得るかはわからない
+    userinfo = RoomUser(1,"akihiro",1,LiveDifficulty.normal,True,True)
+    # TODO: ひとまず例を書いてる.　どこからRoomUserを得るかはわからない.　というかRoomUserはfrom_ormでjsonから生成する
     _join_room(room_id, select_difi, userinfo)
     
 
