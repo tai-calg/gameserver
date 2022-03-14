@@ -95,13 +95,13 @@ def update_user(_token: str, _name: str, _leader_card_id: int) -> None:
         )
         return None
 
-def create_room(liveid: int, select_defi: int):
+def create_room(liveid: int, select_difi: LiveDifficulty):
     """Create new room and returns its id"""
     token = str(uuid.uuid4()) # 同じ設定値のルームが建てるようになるためにトークンを作る
     with engine.begin() as conn:
         result = conn.execute(
             text("INSERT INTO `room` (select_difficulty , live_id, token) VALUES (:select_difficulty, :live_id, :token)"),
-            dict(live_id=liveid, select_difficulty=select_defi, token=token),
+            dict(live_id=liveid, select_difficulty=int(select_difi), token=token),
         )
         #room_id = result.lastrowid
         #print(room_id)

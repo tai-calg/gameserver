@@ -30,6 +30,7 @@ def test_room_1():
         json={"live_id": 1001, "select_difficulty": 1},
     )
     assert response.status_code == 200
+    print(response.json())
 
     room_id = response.json()["room_id"]
     print(f"room/create {room_id=}")

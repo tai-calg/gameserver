@@ -39,9 +39,10 @@ class UserCreateResponse(BaseModel): # ここでjson型にしている（BaseMod
 
 class RoomCreateRequest(BaseModel):
     live_id: int
-    difficulty: LiveDifficulty
-class RoomCreateResponse(BaseModel): 
-    roomid: int
+    select_difficulty: LiveDifficulty 
+    #json とmustで同じ名前？
+class RoomCreateResponse(BaseModel): # ここでjson型にしている.ここでの変数名がjsonのキーになる
+    room_id: int
     
 
 
@@ -88,8 +89,8 @@ def update(req: UserCreateRequest, token: str = Depends(get_auth_token)):
 # room/create
 @app.post("/room/create", response_model=RoomCreateResponse)
 def room_create(req: RoomCreateRequest):
-    model.create_room(req.live_id, req.difficulty)
+    model.create_room(req.live_id, req.select_difficulty)
     room_id = model.get_last_insert_id()
     print("ルームIDは", room_id)
     
-    return RoomCreateResponse(roomid=room_id)
+    return RoomCreateResponse(room_id=room_id)
