@@ -88,8 +88,8 @@ def update(req: UserCreateRequest, token: str = Depends(get_auth_token)):
 # room/create
 @app.post("/room/create", response_model=RoomCreateResponse)
 def room_create(req: RoomCreateRequest):
-    model.create_room(req.live_id, int(req.difficulty))
+    model.create_room(req.live_id, req.difficulty)
     room_id = model.get_last_insert_id()
-    print("ルームIDは",room_id)
+    print("ルームIDは", room_id)
     
     return RoomCreateResponse(roomid=room_id)
