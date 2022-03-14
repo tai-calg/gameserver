@@ -146,6 +146,7 @@ def get_room_list(live_id: int)-> list[RoomInfo]:
         )
         return [RoomInfo.from_orm(res) for res in result]
 
+
 def _join_room(room_id: int, select_difi:int, user_info: RoomUser)-> JoinRoomResult:
     with engine.begin() as conn:
         result = conn.execute(
@@ -180,6 +181,19 @@ def create_user_info(userinfo: RoomUser, room_id: int)-> None:
 
 
 def join_room(room_id: int, select_difi:int):
-    userinfo = RoomUser(1,"akihiro",1,LiveDifficulty.normal,True,True) # TODO: ひとまず例を書いてる
+    userinfo = RoomUser(1,"akihiro",1,LiveDifficulty.normal,True,True) # TODO: ひとまず例を書いてる.　どこからRoomUserを得るかはわからない
     _join_room(room_id, select_difi, userinfo)
     
+
+def pooling_wait(room_id: int)-> WaitRoomStatus:  #DOING
+    """ホストが開始ボタンを押せばゲーム開始でEnumステータスが変更される。その変更をホスト以外がこの関数で受け取る。"""
+
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("""SELECT joined_user_count FROM room WHERE room_id = :room_id"""),
+            dict(room_id=room_id),
+        )
+        if result.one()[0] == 4:
+            return WaitRoomStatus.Start
+        else:
+            return WaitRoomStatus.Wait

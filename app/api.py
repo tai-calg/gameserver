@@ -174,3 +174,9 @@ def join_room(req: JoinRoomRequest):
     return JoinRoomResponse(join_room_result=join_room_result)
 
 
+@app.post("/room/wait", response_model=WaitRoomResponse)
+def wait_in_room(req: WaitRoomRequest):  # DOING
+    """ルーム待機中（ポーリング）。APIの結果でゲーム開始がわかる。 クライアントはn秒間隔で投げる想定。"""
+    status: WaitRoomStatus = model.pooling_wait(req.room_id)
+    room_user_list: list[RoomUser] = model.get_room_user_list(req.room_id)
+    return WaitRoomResponse(status=status, room_user_list=room_user_list)
