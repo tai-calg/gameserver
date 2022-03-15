@@ -1,6 +1,7 @@
 # flake8: noqa
 
 import json
+from unicodedata import name
 import uuid
 from enum import Enum, IntEnum
 from typing import Optional
@@ -134,7 +135,12 @@ def create_room(liveid: int, select_difi: LiveDifficulty):
             text("""INSERT INTO `room` (select_difficulty , live_id, token, joined_user_count, max_user_count) 
                  VALUES (:select_difficulty, :live_id, :token, :joined_user_count, :max_user_count)"""),
             dict(live_id=liveid, select_difficulty=int(select_difi), token=token, \
-                 joined_user_count=1, max_user_count=MAX_USER_COUNT),
+                 joined_user_count=0, max_user_count=MAX_USER_COUNT),
+        )
+        # room_userに登録
+        conn.execute(
+            text("""INSERT INTO `room_user` (user_id, user_name, leader_card_id, select_difficulty, is_me, is_host, room_id)
+                 VALUE (:user_id,  :user_name, :leader_card_id, :select_difficulty, :is_me, :is_host, :room_id) """)
         )
 
         return
@@ -169,9 +175,9 @@ def api_join_room(room_id: int, select_difi:int , user_token :str)-> JoinRoomRes
         result = conn.execute(
             text(""" SELECT joined_user_count FROM room WHERE room_id = :room_id """),
             dict(room_id=room_id),
-        )
+        )  # get number of joined user
         num_people = result.one()[0]
-        if  num_people == 1 :
+        if  num_people == 0 :
             print("yes")
             conn.execute(
                 text(""" UPDATE room SET joined_user_count = joined_user_count + 1 WHERE room_id = :room_id"""),  # ayashii
@@ -203,15 +209,15 @@ def insert_user_info(userinfo: RoomUser, room_id: int)-> None:
         return
 
 
-def create_user_info(is_host: bool, select_difi: int)-> RoomUser:
+def create_user_info(is_host: bool, select_difi: int, user_token:str)-> RoomUser:
     """room TABLE　からGetして、それをRoomUserにする"""
     with engine.begin() as conn:
         result = conn.execute(
-            text("""SELECT id, leader_card_id, select_difficulty FROM user WHERE is_host = :is_host"""),
-            dict(is_host=is_host),
+            text("""SELECT id, name ,leader_card_id FROM user WHERE token = :token"""),
+            dict(token=user_token),
         )
-        res = result.one()
-        return RoomUser(user_id=res[0], leader_card_id=res[1], select_difficulty=res[2], is_me=True, is_host=is_host)
+        res = result.one() # tokenは一意なので
+        return RoomUser(user_id=res[0], user_name=res[1], leader_card_id=res[2],select_difficulty=select_difi, is_me=True, is_host=is_host)
 
 
 
