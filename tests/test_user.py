@@ -17,6 +17,7 @@ def test_create_user():
     token = response.json()["user_token"]
 
     response = client.get("/user/me", headers={"Authorization": f"bearer {token}"})
+    print(response.json())
     assert response.status_code == 200
 
     response_data = response.json()

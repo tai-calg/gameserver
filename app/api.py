@@ -168,8 +168,8 @@ def get_room_list(req: RoomListRequest):
 
 
 @app.post("/room/join", response_model=JoinRoomResponse)
-def join_room(req: JoinRoomRequest):
-    join_room_result: JoinRoomResult = model.join_room(req.room_id, int(req.select_difficulty))  
+def join_room(req: JoinRoomRequest, token: str = Depends(get_auth_token)):
+    join_room_result: JoinRoomResult = model.join_room(req.room_id, int(req.select_difficulty), token)  # 実装元はまだ変更してない  
     # :Result[Ok(), Err(JoinRoomError)]
     return JoinRoomResponse(join_room_result=join_room_result)
 

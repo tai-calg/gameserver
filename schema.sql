@@ -12,11 +12,11 @@ CREATE TABLE `user` (
 
 CREATE TABLE `room` (
   `room_id` bigint NOT NULL AUTO_INCREMENT,
-  `select_difficulty` int NOT NULL,
   `live_id` int NOT NULL,
   `token` varchar(255) DEFAULT NULL,
   `joined_user_count` int NOT NULL,
   `max_user_count` int NOT NULL,
+  `wait_status` int NOT NULL DEFAULT 1,
   UNIQUE KEY `room_id` (`room_id`)
 );
 
