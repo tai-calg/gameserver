@@ -34,23 +34,34 @@ def test_room_1():
     print(response.json())
 
     room_id = response.json()["room_id"]
-    print(f"room/create {room_id=}")
+    print(f"room/create {room_id=}あ")
 
     response = client.post("/room/list", json={"live_id": 1001})
     assert response.status_code == 200
-    print("room/list response:", response.json())
+    print("room/list response:あ", response.json())
+    
+    # join test #
+    response = client.post("/room/join", json={"room_id": room_id, "select_difficulty": 1, "user_token": user_tokens[0]})
+    assert response.status_code == 200
+    print("room/join response:あ", response.json())
+    
+    response = client.post("/room/join", json={"room_id": room_id, "select_difficulty": 1, "user_token": user_tokens[1]})
+    assert response.status_code == 200
+    print("room/join response:あ", response.json())
+    
+    
 
     response = client.post(
         "/room/wait", headers=_auth_header(), json={"room_id": room_id}
     )
     assert response.status_code == 200
-    print("room/wait response:", response.json())
+    print("あ　room/wait response:", response.json())
 
     response = client.post(
         "/room/start", headers=_auth_header(), json={"room_id": room_id}
     )
     assert response.status_code == 200
-    print("room/wait response:", response.json())
+    print("あ　room/wait response:", response.json())
 
     response = client.post(
         "/room/end",
@@ -58,7 +69,7 @@ def test_room_1():
         json={"room_id": room_id, "score": 1234, "judge_count_list": [4, 3, 2]},
     )
     assert response.status_code == 200
-    print("room/end response:", response.json())
+    print("あ　room/end response:", response.json())
 
     response = client.post(
         "/room/result",

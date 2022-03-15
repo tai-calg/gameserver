@@ -60,6 +60,7 @@ class RoomListResponse(BaseModel):
 class JoinRoomRequest(BaseModel):
     room_id: int
     select_difficulty: LiveDifficulty
+    user_token: str  # 規定のAPIにつけ足した。 
 
 
 class JoinRoomResponse(BaseModel):
@@ -169,7 +170,7 @@ def get_room_list(req: RoomListRequest):
 
 @app.post("/room/join", response_model=JoinRoomResponse)
 def join_room(req: JoinRoomRequest):
-    join_room_result: JoinRoomResult = model.join_room(req.room_id, int(req.select_difficulty))  
+    join_room_result: JoinRoomResult = model.api_join_room(req.room_id, int(req.select_difficulty), req.user_token)  
     # :Result[Ok(), Err(JoinRoomError)]
     return JoinRoomResponse(join_room_result=join_room_result)
 
@@ -180,3 +181,21 @@ def wait_in_room(req: WaitRoomRequest):  # DOING
     status: WaitRoomStatus = model.pooling_wait(req.room_id)
     room_user_list: list[RoomUser] = model.get_room_user_list(req.room_id)
     return WaitRoomResponse(status=status, room_user_list=room_user_list)
+
+
+@app.post("room/start", response_model=GameStartResponse)
+def start_game(req: GameStartRequest):
+    """ゲーム開始"""
+    model.start_game(req.room_id)
+    return GameStartResponse()
+
+
+@app.post("/room/end", response_model=GameEndResponse)
+def end_game(req: GameEndRequest):
+    """ゲーム終了"""
+    model.end_game(req.room_id, req.judge_count_list, req.score)
+    return GameEndResponse()
+
+
+
+# @app.post("room/result", response_model=GameResultResponse)

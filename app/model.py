@@ -8,7 +8,7 @@ from unittest import result
 
 from fastapi import HTTPException
 from pydantic import BaseModel
-from sqlalchemy import text
+from sqlalchemy import text, true
 from sqlalchemy.exc import NoResultFound
 
 
@@ -42,7 +42,7 @@ class JoinRoomResult(IntEnum):
 
 
 class WaitRoomStatus(IntEnum):
-    Wating = 1,
+    Waiting = 1,
     LiveStart = 2,
     Dissolution = 3
 
@@ -61,6 +61,16 @@ class RoomUser(BaseModel):
     select_difficulty:LiveDifficulty
     is_me: bool
     is_host:bool
+    
+    def __init__(self, user_id, user_name, leader_card_id, select_difficulty, is_me, is_host):
+        self.user_id = user_id
+        self.user_name = user_name
+        self.leader_card_id = leader_card_id
+        self.select_difficulty = select_difficulty
+        self.is_me = is_me
+        self.is_host = is_host
+    class Config:
+        orm_mode = True
 
 
 class ResultUser(BaseModel):
@@ -87,7 +97,6 @@ def create_user(name: str, leader_card_id: int) -> str:
 
 
 def _get_user_by_token(conn, token: str) -> Optional[SafeUser]:
-    # TODO:
     reqest = conn.execute(
         text("SELECT `id`, `name`, `leader_card_id` FROM user WHERE `token` =:token"),
         dict(token=token),
@@ -137,6 +146,10 @@ def get_last_insert_id()-> int:
         )
         return result.scalar()
 
+"""     
+room_host = create_user_info(True, select_difi )
+insert_user_info(room_host,)
+        """
 
 def get_room_list(live_id: int)-> list[RoomInfo]:
     with engine.begin() as conn:
@@ -147,54 +160,91 @@ def get_room_list(live_id: int)-> list[RoomInfo]:
         return [RoomInfo.from_orm(res) for res in result]
 
 
-def _join_room(room_id: int, select_difi:int, user_info: RoomUser)-> JoinRoomResult:
+
+
+
+def api_join_room(room_id: int, select_difi:int , user_token :str)-> JoinRoomResult:
+    # ここでRoomUserつくる
     with engine.begin() as conn:
         result = conn.execute(
             text(""" SELECT joined_user_count FROM room WHERE room_id = :room_id """),
             dict(room_id=room_id),
         )
-        # print(f"値は{type(result.one()[0])}")
-        if result.one()[0] < 4 :
+        num_people = result.one()[0]
+        if  num_people == 1 :
             print("yes")
             conn.execute(
                 text(""" UPDATE room SET joined_user_count = joined_user_count + 1 WHERE room_id = :room_id"""),  # ayashii
                 dict(room_id=room_id),
             )
-            
-            create_user_info(user_info, room_id)
+            room_user :RoomUser = create_user_info(is_host = True, select_difi = select_difi)
+            insert_user_info(room_user, room_id)
+            return JoinRoomResult.Ok
+        elif num_people  < 4:
+            conn.execute(
+                text(""" UPDATE room SET joined_user_count = joined_user_count + 1 WHERE room_id = :room_id"""),  # ayashii
+                dict(room_id=room_id),
+            )
+            insert_user_info(room_user, room_id, is_host = False)
             return JoinRoomResult.Ok
         else:
             return JoinRoomResult.RoomFull  #TODO: disbanded , other errorのコーディングを後でやる
             
 
-def create_user_info(userinfo: RoomUser, room_id: int)-> None:
+def insert_user_info(userinfo: RoomUser, room_id: int)-> None:
     with engine.begin() as conn:
         result = conn.execute(
-            text("""INSERT INTO `user_info` (user_id, room_id, leader_card_id , select_difficulty, is_me, is_host) 
+            text("""INSERT INTO `room_user` (user_id, room_id, leader_card_id , select_difficulty, is_me, is_host) 
                  VALUES (:user_id, :room_id, :leader_card_id, :select_difficulty, :is_me, :is_host)"""),
-            dict(user_id=userinfo.user_id, room_id=room_id,leader_card_id = userinfo.leader_card_id , \
+            dict(user_id=userinfo.user_id, room_id=room_id, leader_card_id = userinfo.leader_card_id , \
                 select_difficulty=userinfo.select_difficulty, \
-                 is_me=userinfo.is_me, is_host=userinfo.is_host),
+                 is_me = userinfo.is_me, is_host=userinfo.is_host),
         )
         return
 
 
+def create_user_info(is_host: bool, select_difi: int)-> RoomUser:
+    """room TABLE　からGetして、それをRoomUserにする"""
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("""SELECT id, leader_card_id, select_difficulty FROM user WHERE is_host = :is_host"""),
+            dict(is_host=is_host),
+        )
+        res = result.one()
+        return RoomUser(user_id=res[0], leader_card_id=res[1], select_difficulty=res[2], is_me=True, is_host=is_host)
 
-def join_room(room_id: int, select_difi:int):
-    userinfo = RoomUser(1,"akihiro",1,LiveDifficulty.normal,True,True)
-    # TODO: ひとまず例を書いてる.　どこからRoomUserを得るかはわからない.　というかRoomUserはfrom_ormでjsonから生成する
-    _join_room(room_id, select_difi, userinfo)
-    
+
 
 def pooling_wait(room_id: int)-> WaitRoomStatus:  #DOING
     """ホストが開始ボタンを押せばゲーム開始でEnumステータスが変更される。その変更をホスト以外がこの関数で受け取る。"""
 
     with engine.begin() as conn:
         result = conn.execute(
-            text("""SELECT joined_user_count FROM room WHERE room_id = :room_id"""),
+            text("""SELECT wait_status FROM room WHERE room_id = :room_id"""),
             dict(room_id=room_id),
         )
-        if result.one()[0] == 4:
-            return WaitRoomStatus.Start
+        
+        if result.one()[0] == int(WaitRoomStatus.LiveStart):
+            return WaitRoomStatus.LiveStart
         else:
-            return WaitRoomStatus.Wait
+            return WaitRoomStatus.Waiting
+
+
+def get_room_user_list(room_id:int):
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("""SELECT user_name, leader_card_id, select_difficulty,
+                 FROM room_user WHERE room_id = :room_id"""),
+            dict(room_id=room_id),
+        )
+        return [RoomUser.from_orm(res) for res in result]
+
+
+def start_game(room_id: int)-> None:
+    with engine.begin() as conn:
+        gamestart = int(WaitRoomStatus.LiveStart)
+        result = conn.execute(
+            text("""UPDATE room SET wait_status = :gamestart WHERE room_id = :room_id"""),
+            dict(gamestart = gamestart ,room_id=room_id),
+        )
+        return
