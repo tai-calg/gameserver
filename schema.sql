@@ -1,6 +1,7 @@
 DROP TABLE IF EXISTS `user`;
 DROP TABLE IF EXISTS `room`;
 DROP TABLE IF EXISTS `room_user`;
+DROP TABLE IF EXISTS `room_user_token`;
 CREATE TABLE `user` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `name` varchar(255) DEFAULT NULL,
@@ -20,14 +21,6 @@ CREATE TABLE `room` (
 );
 
 
-CREATE TABLE `room_user_token`(
-  `room_id` bigint NOT NULL,
-  `token1` varchar(255) ,
-  `token2` varchar(255) ,
-  `token3` varchar(255) ,
-  `token4` varchar(255) ,
-  PRIMARY KEY `room_id`
-);
 
 CREATE TABLE `room_user` (
   `user_id` bigint NOT NULL,
@@ -37,4 +30,14 @@ CREATE TABLE `room_user` (
   `is_host` tinyint NOT NULL,
   `room_id` bigint NOT NULL,
   PRIMARY KEY (`room_id`,`user_id`)
+);
+
+
+CREATE TABLE `room_user_token` (
+  `room_id` bigint NOT NULL,
+  `token1` varchar(255) DEFAULT NULL,
+  `token2` varchar(255) DEFAULT NULL,
+  `token3` varchar(255) DEFAULT NULL,
+  `token4` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`room_id`)
 );

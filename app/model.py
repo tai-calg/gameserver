@@ -1,7 +1,7 @@
 # flake8: noqa
 
 import json
-from lib2to3.pgen2 import token
+
 import uuid
 from enum import Enum, IntEnum
 from typing import Optional
