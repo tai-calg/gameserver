@@ -136,14 +136,19 @@ def create_room(liveid: int, select_difi: LiveDifficulty, token: str)-> int:
             dict(live_id=liveid, select_difficulty=int(select_difi), \
                  joined_user_count=0, max_user_count=MAX_USER_COUNT),
         )
-        
-        roomid = get_last_insert_id()
-        
-        join_room(roomid, select_difi, True, token) #ホストを登録
-        
+    
+    
+    roomid = get_last_insert_id()
+    print("あroomid = ", roomid)
+    join_room(roomid,int(select_difi),True, token)
+
+
+
+    #ホストを登録
+    
+    return roomid
         
 
-        return roomid  # room tokenいる？
 
 def get_last_insert_id()-> int:
     with engine.begin() as conn:
@@ -169,16 +174,17 @@ def join_room(room_id: int, select_difi:int ,is_host: bool, token: str)-> JoinRo
             dict(room_id=room_id),
         )
         num_people = result.one()[0]
+        print(num_people)
         if  num_people < 4 :
             # joinする
             conn.execute(
-                text(""" UPDATE room SET joined_user_count = joined_user_count + 1 WHERE room_id = :room_id"""),  # ayashii
-                dict(room_id=room_id),
+                text(""" UPDATE room SET joined_user_count = :count WHERE room_id = :room_id"""),  # ayashii
+                dict(count = num_people+1,room_id=room_id),
             )
             
             register_room_user_ref(room_id, f"token{num_people+1}", token)
             assert(f"token{1}" == "token1")
-            create_room_user(is_host, room_id, token)
+            create_room_user(is_host, room_id, token, select_difi)
             
             # get_room_users(room_id) at wait
             
@@ -188,7 +194,7 @@ def join_room(room_id: int, select_difi:int ,is_host: bool, token: str)-> JoinRo
             return JoinRoomResult.RoomFull  #TODO: disbanded , other errorのコーディングを後でやる
             
 
-def create_room_user(is_host: bool, room_id: int, user_token:str)-> None:
+def create_room_user(is_host: bool, room_id: int, user_token:str, select_difi:int)-> None:
     with engine.begin() as conn:
         # tokenからuser情報を持ってくる
         user_info = conn.execute(
@@ -197,10 +203,10 @@ def create_room_user(is_host: bool, room_id: int, user_token:str)-> None:
         )
         user = user_info.one()
         conn.execute(
-            text("""INSERT INTO `room_user` (user_id, user_name, leader_card_id , select_difficulty, is_host) 
-                 VALUES (:user_id, :room_id, :leader_card_id, :select_difficulty, :is_host)"""),
+            text("""INSERT INTO `room_user` (user_id, user_name, leader_card_id , select_difficulty, is_host, room_id) 
+                 VALUES (:user_id, :user_name,:leader_card_id, :select_difficulty, :is_host,  :room_id)"""),
             dict(user_id=user[0], user_name = user[1], leader_card_id = user[2] , \
-                select_difficulty= user[3], \
+                select_difficulty= select_difi, \
                 is_host = int(is_host) ,room_id=room_id),
         )
         return
@@ -210,10 +216,10 @@ def create_room_user(is_host: bool, room_id: int, user_token:str)-> None:
 def register_room_user_ref(room_id: int , token_idx:str, token: str):
     with engine.begin() as conn:
         conn.execute(
-            text("""UPDATE room_user_token SET :token_index = :token WHERE room_id = :room_id"""),
+            text(f"""UPDATE room_user_token SET {token_idx} = :token WHERE room_id = :room_id"""),
             # token1だけでなく、順に走査してnullになってる箇所に挿入したい. mysqlの命令調べなくては
             # room_user_token TABLE はトークンを参照してその部屋にいる人の user TABLEのデータを取得するためのテーブル
-            dict(token=token, room_id=room_id , token_index=token_idx),
+            dict( token=token, room_id=room_id),
         )
         return
 
