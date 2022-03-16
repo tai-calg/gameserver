@@ -1,6 +1,7 @@
 # flake8: noqa
 
 import json
+from lib2to3.pgen2 import token
 import uuid
 from enum import Enum, IntEnum
 from typing import Optional
@@ -125,18 +126,24 @@ def update_user(_token: str, _name: str, _leader_card_id: int) -> None:
         )
         return None
 
-def create_room(liveid: int, select_difi: LiveDifficulty)-> str:
+def create_room(liveid: int, select_difi: LiveDifficulty, token: str)-> int:
     """Create new room and returns its id"""
-    room_token = str(uuid.uuid4()) # 同じ設定値のルームが建てるようになるためにトークンを作る
+    # room_token = str(uuid.uuid4()) # 同じ設定値のルームが建てるようになるためにトークンを作る
     with engine.begin() as conn:
-        result = conn.execute(
-            text("""INSERT INTO `room` (select_difficulty , live_id, token, joined_user_count, max_user_count) 
-                 VALUES (:select_difficulty, :live_id, :token, :joined_user_count, :max_user_count)"""),
-            dict(live_id=liveid, select_difficulty=int(select_difi), token=room_token, \
-                 joined_user_count=1, max_user_count=MAX_USER_COUNT),
+        conn.execute(
+            text("""INSERT INTO `room` (select_difficulty , live_id, joined_user_count, max_user_count) 
+                 VALUES (:select_difficulty, :live_id, :joined_user_count, :max_user_count)"""),
+            dict(live_id=liveid, select_difficulty=int(select_difi), \
+                 joined_user_count=0, max_user_count=MAX_USER_COUNT),
         )
+        
+        roomid = get_last_insert_id()
+        
+        join_room(roomid, select_difi, True, token) #ホストを登録
+        
+        
 
-        return room_token
+        return roomid  # room tokenいる？
 
 def get_last_insert_id()-> int:
     with engine.begin() as conn:
@@ -155,55 +162,73 @@ def get_room_list(live_id: int)-> list[RoomInfo]:
         return [RoomInfo.from_orm(res) for res in result]
 
 
-def join_room(room_id: int, select_difi:int , token: str)-> JoinRoomResult:
+def join_room(room_id: int, select_difi:int ,is_host: bool, token: str)-> JoinRoomResult:
     with engine.begin() as conn:
         result = conn.execute(
             text(""" SELECT joined_user_count FROM room WHERE room_id = :room_id """),
             dict(room_id=room_id),
         )
-        if result.one()[0] < 4 :
+        num_people = result.one()[0]
+        if  num_people < 4 :
             # joinする
             conn.execute(
                 text(""" UPDATE room SET joined_user_count = joined_user_count + 1 WHERE room_id = :room_id"""),  # ayashii
                 dict(room_id=room_id),
             )
             
-            create_user_info(user_info, room_id)
+            register_room_user_ref(room_id, f"token{num_people+1}", token)
+            assert(f"token{1}" == "token1")
+            create_room_user(is_host, room_id, token)
+            
+            # get_room_users(room_id) at wait
+            
+            #create_room_user(user_info, room_id)
             return JoinRoomResult.Ok
         else:
             return JoinRoomResult.RoomFull  #TODO: disbanded , other errorのコーディングを後でやる
             
 
-def create_user_info(userinfo: RoomUser, room_id: int)-> None:
+def create_room_user(is_host: bool, room_id: int, user_token:str)-> None:
     with engine.begin() as conn:
-        result = conn.execute(
-            text("""INSERT INTO `user_info` (user_id, room_id, leader_card_id , select_difficulty, is_me, is_host) 
-                 VALUES (:user_id, :room_id, :leader_card_id, :select_difficulty, :is_me, :is_host)"""),
-            dict(user_id=userinfo.user_id, room_id=room_id,leader_card_id = userinfo.leader_card_id , \
-                select_difficulty=userinfo.select_difficulty, \
-                 is_me=userinfo.is_me, is_host=userinfo.is_host),
+        # tokenからuser情報を持ってくる
+        user_info = conn.execute(
+            text(""" SELECT id, name, leader_card_id FROM user WHERE token = :token """),
+            dict(token = user_token)
+        )
+        user = user_info.one()
+        conn.execute(
+            text("""INSERT INTO `room_user` (user_id, user_name, leader_card_id , select_difficulty, is_host) 
+                 VALUES (:user_id, :room_id, :leader_card_id, :select_difficulty, :is_host)"""),
+            dict(user_id=user[0], user_name = user[1], leader_card_id = user[2] , \
+                select_difficulty= user[3], \
+                is_host = int(is_host) ,room_id=room_id),
         )
         return
 
 
 
-def register_roomuser_ref(room_id: int , token: str):
+def register_room_user_ref(room_id: int , token_idx:str, token: str):
     with engine.begin() as conn:
         conn.execute(
-            text("""UPDATE room_user_token SET token1 = :token WHERE room_id = :room_id"""),
+            text("""UPDATE room_user_token SET :token_index = :token WHERE room_id = :room_id"""),
             # token1だけでなく、順に走査してnullになってる箇所に挿入したい. mysqlの命令調べなくては
             # room_user_token TABLE はトークンを参照してその部屋にいる人の user TABLEのデータを取得するためのテーブル
-            dict(token=token, room_id=room_id),
+            dict(token=token, room_id=room_id , token_index=token_idx),
         )
         return
 
 
-def get_room_users(room_id: int)-> list[RoomUser]:
+def get_room_users(room_id: int, select_difi: int)-> list[RoomUser]:
     # room_user_tokenに登録されてるtokenを全部取得して、user　TABLEのgetしてくる。そしてRoomUser型にしてリストで返す
     with engine.begin() as conn:  
-        # result = conn.execute(
-        #     text("""SELECT user_id, room_id, leader_card_id, select_difficulty, is_me, is_host FROM user_info"""),
-        # )
+        result = conn.execute(
+            text("""SELECT token1, token2, token3, token4 FROM room_user_token WHERE room_id = :room_id"""),
+            dict(room_id=room_id),
+        )
+        for tk in [result[0], result[1], result[2], result[3]]:
+            if tk != None:
+                get_user_by_token(tk)
+            
         return [RoomUser.from_orm(res) for res in result]
 
     

@@ -13,11 +13,20 @@ CREATE TABLE `user` (
 CREATE TABLE `room` (
   `room_id` bigint NOT NULL AUTO_INCREMENT,
   `live_id` int NOT NULL,
-  `token` varchar(255) DEFAULT NULL,
   `joined_user_count` int NOT NULL,
   `max_user_count` int NOT NULL,
   `wait_status` int NOT NULL DEFAULT 1,
   UNIQUE KEY `room_id` (`room_id`)
+);
+
+
+CREATE TABLE `room_user_token`(
+  `room_id` bigint NOT NULL,
+  `token1` varchar(255) ,
+  `token2` varchar(255) ,
+  `token3` varchar(255) ,
+  `token4` varchar(255) ,
+  PRIMARY KEY `room_id`
 );
 
 CREATE TABLE `room_user` (
@@ -25,7 +34,6 @@ CREATE TABLE `room_user` (
   `user_name` varchar(255) DEFAULT NULL,
   `leader_card_id` int DEFAULT NULL,
   `select_difficulty` int NOT NULL,
-  `is_me` tinyint NOT NULL,
   `is_host` tinyint NOT NULL,
   `room_id` bigint NOT NULL,
   PRIMARY KEY (`room_id`,`user_id`)

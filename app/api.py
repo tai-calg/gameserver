@@ -153,8 +153,8 @@ def update(req: UserCreateRequest, token: str = Depends(get_auth_token)):
 
 # room/create
 @app.post("/room/create", response_model=RoomCreateResponse)
-def room_create(req: RoomCreateRequest):
-    model.create_room(req.live_id, req.select_difficulty)
+def room_create(req: RoomCreateRequest, token: str = Depends(get_auth_token)):
+    model.create_room(req.live_id, req.select_difficulty, token)
     room_id = model.get_last_insert_id()
     print("ルームIDは", room_id)
    
@@ -169,7 +169,7 @@ def get_room_list(req: RoomListRequest):
 
 @app.post("/room/join", response_model=JoinRoomResponse)
 def join_room(req: JoinRoomRequest, token: str = Depends(get_auth_token)):
-    join_room_result: JoinRoomResult = model.join_room(req.room_id, int(req.select_difficulty), token)  # 実装元はまだ変更してない  
+    join_room_result: JoinRoomResult = model.join_room(req.room_id, int(req.select_difficulty), False, token) 
     # :Result[Ok(), Err(JoinRoomError)]
     return JoinRoomResponse(join_room_result=join_room_result)
 
